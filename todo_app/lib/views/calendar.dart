@@ -64,7 +64,7 @@ class _CalendarViewState extends State<CalendarView> {
             : widget.controller
                     .getEventsFromDay(widget.controller.selectedDay)
                     .isEmpty
-                ? _emptyState()
+                ? _emptyState() 
                 : _eventList(),
       ],
     );
