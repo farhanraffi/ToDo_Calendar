@@ -1,8 +1,10 @@
-import 'package:flutter/foundation.dart';
+// ignore_for_file: annotate_overrides, unnecessary_this
 
 class Event {
   String title;
-  Event({required this.title});
+  bool isDone;
+
+  Event({required this.title, this.isDone = false});
 
   String toString() => this.title;
 }

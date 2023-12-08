@@ -1,180 +1,261 @@
-// ignore_for_file: library_private_types_in_public_api, use_key_in_widget_constructors
+// ignore_for_file: use_key_in_widget_constructors, library_private_types_in_public_api, no_leading_underscores_for_local_identifiers
 
 import 'package:flutter/material.dart';
-import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:todo_app/controllers/todo_controller.dart';
-import 'package:todo_app/models/todo_model.dart';
+import 'package:todo_app/models/events.dart';
 
-class CalendarView extends StatefulWidget {
+class Calendar extends StatefulWidget {
   @override
-  _CalendarViewState createState() => _CalendarViewState();
+  _CalendarState createState() => _CalendarState();
 }
 
-class _CalendarViewState extends State<CalendarView> {
-  List<String> todoItems = ['Task 1', 'Task 2', 'Task 3'];
+class _CalendarState extends State<Calendar> {
+  bool _isLoading = true;
 
-  CalendarFormat _calendarFormat = CalendarFormat.month;
-  DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay;
+  late Map<DateTime, List<Event>> selectedEvents;
+  CalendarFormat format = CalendarFormat.month;
+  DateTime selectedDay = DateTime.now();
+  DateTime focusedDay = DateTime.now();
 
-  Map<DateTime, List<TodoModel>> todo = {
-    DateTime.now(): [
-      TodoModel(title: 'Task 1'),
-      TodoModel(title: 'Task 2'),
-    ],
-    DateTime.now().add(Duration(days: 1)): [
-      TodoModel(title: 'Task 3'),
-      TodoModel(title: 'Task 4'),
-    ],
-    DateTime.now().add(Duration(days: 2)): [
-      TodoModel(title: 'Task 5'),
-    ],
-  };
-
-  final TodoController _todoController = TodoController();
-  final TextEditingController _textEditingController = TextEditingController();
-
-  late final ValueNotifier<List<TodoModel>> _selectedTodo;
+  final TextEditingController _eventController = TextEditingController();
 
   @override
   void initState() {
+    selectedEvents = {};
+    // Simulate data loading delay
+    Future.delayed(Duration(seconds: 2), () {
+      setState(() {
+        _isLoading = false;
+      });
+    });
+
     super.initState();
-    _selectedDay = _focusedDay;
-    _selectedTodo = ValueNotifier(_getTodoForDay(_selectedDay!));
+  }
+
+  List<Event> _getEventsfromDay(DateTime date) {
+    return selectedEvents[date] ?? [];
   }
 
   @override
   void dispose() {
+    _eventController.dispose();
     super.dispose();
   }
 
-  void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
-    if (!isSameDay(_selectedDay, selectedDay)) {
-      setState(() {
-        _selectedDay = selectedDay;
-        _focusedDay = focusedDay;
-        _selectedTodo.value = _getTodoForDay(selectedDay);
-      });
-    }
+  void _removeEvent(Event event) {
+    setState(() {
+      selectedEvents[selectedDay]?.remove(event);
+    });
   }
 
-  List<TodoModel> _getTodoForDay(DateTime day) {
-    return todo[day] ?? [];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Calendar View'),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          showDialog(
-              context: context,
-              builder: (context) {
-                return AlertDialog(
-                  title: Text("Add Todo for date\n"),
-                  content: Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: _textEditingController,
-                        ),
-                      ],
-                    ),
-                  ),
-                  actions: [
-                    ElevatedButton(
-                        onPressed: () {
-                          _button();
-                        },
-                        child: Text("submit"))
-                  ],
-                );
-              });
-        },
-        child: Icon(Icons.add),
-      ),
-      body: Column(
-        children: [
-          TableCalendar(
-            firstDay: DateTime.utc(2023, 1, 1),
-            lastDay: DateTime.utc(2030, 12, 31),
-            focusedDay: _focusedDay,
-            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-            startingDayOfWeek: StartingDayOfWeek.monday,
-            calendarFormat: _calendarFormat,
-            onDaySelected: _onDaySelected,
-            eventLoader: _getTodoForDay,
-            calendarStyle: CalendarStyle(outsideDaysVisible: false),
-            onFormatChanged: (format) {
-              if (_calendarFormat != format) {
+  void _editEvent(Event event) {
+    _eventController.text = event.title;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Edit Event"),
+        content: TextFormField(
+          controller: _eventController,
+        ),
+        actions: [
+          TextButton(
+            child: Text("Cancel"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          TextButton(
+            child: Text("Save"),
+            onPressed: () {
+              if (_eventController.text.isNotEmpty) {
                 setState(() {
-                  _calendarFormat = format;
+                  event.title = _eventController.text;
                 });
               }
+              Navigator.pop(context);
+              _eventController.clear();
             },
-            onPageChanged: (focusedDay) {
-              _focusedDay = focusedDay;
-            },
-          ),
-          SizedBox(height: 8.0),
-          Expanded(
-            child: ValueListenableBuilder<List<TodoModel>>(
-                valueListenable: _selectedTodo,
-                builder: (context, value, _) {
-                  return ListView.builder(
-                      itemCount: value.length,
-                      itemBuilder: (context, index) {
-                        return Container(
-                          margin: EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                              border: Border.all(),
-                              borderRadius: BorderRadius.circular(12)),
-                          child: ListTile(
-                            onTap: () {},
-                            title: Text('${value[index].title}'),
-                          ),
-                        );
-                      });
-                }),
           ),
         ],
       ),
     );
   }
 
-  _reorderlist() {
-    return ReorderableListView(
-      onReorder: (int oldIndex, int newIndex) {
-        setState(() {
-          if (oldIndex < newIndex) {
-            newIndex -= 1;
-          }
-          final String item = todoItems.removeAt(oldIndex);
-          todoItems.insert(newIndex, item);
-        });
-      },
+  void _reorderEvents(int oldIndex, int newIndex) {
+    setState(() {
+      if (oldIndex < newIndex) {
+        newIndex -= 1;
+      }
+      final item = _getEventsfromDay(selectedDay).removeAt(oldIndex);
+      _getEventsfromDay(selectedDay).insert(newIndex, item);
+    });
+  }
+
+  void _toggleDone(Event event) {
+    setState(() {
+      event.isDone = !event.isDone;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: AppBar(
+          title: Text("To Do App Calendar"),
+          centerTitle: true,
+        ),
+        floatingActionButton: _fab(),
+        body: _body());
+  }
+
+  Widget _body() {
+    return Column(
       children: [
-        for (int index = 0; index < todoItems.length; index++)
-          ListTile(
-            key: Key('$index'), // Provide a unique key for each item
-            tileColor: Colors.blue[100],
-            title: Text(todoItems[index]),
-          ),
+        _tableCalendar(),
+        _isLoading
+            ? _buildLoadingState()
+            : _getEventsfromDay(selectedDay).isEmpty
+                ? _emptyState()
+                : _eventList(),
       ],
     );
   }
 
-  void _button() {
-    todo.addAll({
-      _selectedDay!: [TodoModel(title: _textEditingController.text)]
-    });
-    Navigator.of(context).pop();
-    _selectedTodo.value = _getTodoForDay(_selectedDay!);
-    _textEditingController.clear();
+  Widget _tableCalendar() {
+    return TableCalendar(
+      focusedDay: selectedDay,
+      firstDay: DateTime(1990),
+      lastDay: DateTime(2050),
+      calendarFormat: format,
+      onFormatChanged: (CalendarFormat _format) {
+        setState(() {
+          format = _format;
+        });
+      },
+      startingDayOfWeek: StartingDayOfWeek.sunday,
+      daysOfWeekVisible: true,
+
+      //Day Changed
+      onDaySelected: (DateTime selectDay, DateTime focusDay) {
+        setState(() {
+          selectedDay = selectDay;
+          focusedDay = focusDay;
+        });
+      },
+      selectedDayPredicate: (DateTime date) {
+        return isSameDay(selectedDay, date);
+      },
+      eventLoader: _getEventsfromDay,
+    );
+  }
+
+  Widget _emptyState() {
+    return Center(
+        child: Column(
+      children: const [
+        Icon(Icons.calendar_month_outlined, size: 100),
+        Text("No events for selected day!"),
+      ],
+    ));
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: CircularProgressIndicator(),
+    );
+  }
+
+  Widget _eventList() {
+    return Expanded(
+      child: ReorderableListView(
+        onReorder: (oldIndex, newIndex) {
+          _reorderEvents(oldIndex, newIndex);
+        },
+        children: _getEventsfromDay(selectedDay)
+            .asMap()
+            .entries
+            .map(
+              (entry) => Container(
+                key: ValueKey(entry.key),
+                margin: EdgeInsets.fromLTRB(15, 15, 0, 5),
+                decoration: BoxDecoration(
+                  border: Border.all(),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Checkbox(
+                        value: entry.value.isDone,
+                        onChanged: (value) {
+                          _toggleDone(entry.value);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.edit),
+                        onPressed: () {
+                          _editEvent(entry.value);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.delete),
+                        onPressed: () {
+                          _removeEvent(entry.value);
+                        },
+                      ),
+                      SizedBox(
+                        width: 10,
+                      )
+                    ],
+                  ),
+                  title: Text(entry.value.title),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _fab() {
+    return FloatingActionButton.extended(
+      onPressed: () => showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("Add Event"),
+          content: TextFormField(
+            controller: _eventController,
+          ),
+          actions: [
+            TextButton(
+              child: Text("Cancel"),
+              onPressed: () => Navigator.pop(context),
+            ),
+            TextButton(
+              child: Text("Ok"),
+              onPressed: () {
+                if (_eventController.text.isEmpty) {
+                } else {
+                  if (selectedEvents[selectedDay] != null) {
+                    selectedEvents[selectedDay]!.add(
+                      Event(title: _eventController.text),
+                    );
+                  } else {
+                    selectedEvents[selectedDay] = [
+                      Event(title: _eventController.text)
+                    ];
+                  }
+                }
+                Navigator.pop(context);
+                _eventController.clear();
+                setState(() {});
+                return;
+              },
+            ),
+          ],
+        ),
+      ),
+      label: Text("Add Event"),
+      icon: Icon(Icons.add),
+    );
   }
 }
