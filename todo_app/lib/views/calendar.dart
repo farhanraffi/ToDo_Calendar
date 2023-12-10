@@ -1,5 +1,5 @@
 /// Calendar View for Requirement number 6 stuctured this project as MVC
-// ignore_for_file: library_private_types_in_public_api, prefer_final_fields
+// ignore_for_file: library_private_types_in_public_api, prefer_final_fields, no_leading_underscores_for_local_identifiers
 
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -147,7 +147,9 @@ class _CalendarViewState extends State<CalendarView> {
         children: const [
           SizedBox(height: 20),
           Icon(Icons.calendar_month_outlined, size: 50),
-          Text("No events for selected day!"),
+          SizedBox(height: 15),
+          Text("No events for selected day!", style:
+                        TextStyle(fontSize: 16.0, fontWeight: FontWeight.w700),),
         ],
       ),
     );
